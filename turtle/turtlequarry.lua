@@ -1,6 +1,6 @@
-local version = 0.2
+local version = 1.1
 --  +------------------------+  --
---  |-->   INITIALIZATION   <--|  --
+--  |-->  INITIALIZATION  <--|  --
 --  +------------------------+  --
 if not turtle then
   print("This program can only be")
@@ -27,6 +27,31 @@ if updater then
     end
   end
 end
+
+-- INITIALIZING NECESSARY FUNCTIONS
+local startswith = function(text, piece)
+  return string.sub(text, 1, string.len(piece)) == piece
+end
+
+local equals = function(text1, text2)
+  return text1 == text2
+end
+
+-- possible chests
+local chests = {
+  "minecraft:chest",
+  "minecraft:trapped_chest",
+  "minecraft:ender_chest",
+  "IronChest:BlockIronChest",
+  "Railcraft:tile.railcraft.machine.beta",
+  "Thaumcraft:blockChestHungry",
+  "ThaumicExploration:boundChest",
+  "EnderStorage:enderChest",
+  "appliedenergistics2:tile.BlockSkyChest",
+  "appliedenergistics2:tile.BlockChest",
+  "witchery:refillingchest",
+  "witchery:leechchest"
+}
 
 -- directions in relation to initial placement direction (which is 0, or north)
 local direction = {front=0, right=1, back=2, left=3}
@@ -56,36 +81,37 @@ local quarry = {
   
   -- >TODO< quarry offsets for x,y and depth
 
-  -- list of blocks/things to ignore
-  ignoreList = {},
+  -- list of blocks/things to ignore and a function "matches" that is used to match the things against this list
+  ignore = {
+    matches = equals -- function(blockname, tablevalue)
+  }
 }
 
--- INITIALIZING NECESSARY FUNCTIONS
-local startswith = function(self, piece)
-  return string.sub(self, 1, string.len(piece)) == piece
-end
+
 
 -- READ OUT COMMAND LINE PARAMETERS --
 
 for _,par in pairs(ARGS) do
-  if startswith(par, "c:") then
-    quarry.lastcompslot = tonumber(string.sub(par, string.len("c:")+1))
-    print("Last compare slot: "..tostring(quarry.lastcompslot))
-  elseif startswith(par, "w:") then
+  if startswith(par, "w:") then
     quarry.width = tonumber(string.sub(par, string.len("w:")+1))
     print("Quarry width: "..tostring(quarry.width))
+    
   elseif startswith(par, "l:") then
     quarry.length = tonumber(string.sub(par, string.len("l:")+1))
     print("Quarry length: "..tostring(quarry.length))
+    
   elseif startswith(par, "offh:") then
     quarry.offsetH = tonumber(string.sub(par, string.len("offh:")+1))
     print("Quarry height offset: "..tostring(quarry.offsetH))
+    
   elseif startswith(par, "maxd:") then
     quarry.maxDepth = tonumber(string.sub(par, string.len("maxd:")+1))
     print("Quarry maximum depth: "..tostring(quarry.maxDepth))
+    
   elseif startswith(par, "skip:") then
     quarry.skipHoles = tonumber(string.sub(par, string.len("skip:")+1))
     print("Skipping the first "..tostring(quarry.skipHoles).." holes")
+    
   elseif startswith(par, "ignore:") then
     local filepath = string.sub(par, string.len("ignore:")+1)
     if fs.exists(filepath) and not fs.isDir(filepath) then
@@ -93,7 +119,13 @@ for _,par in pairs(ARGS) do
       local ok, tbl = pcall(textutils.unserialize, file.readAll())
       file.close()
       if ok then
-        quarry.ignoreList = tbl
+        quarry.ignore = tbl
+        if quarry.ignore.matches == "startswith" then
+          quarry.ignore.matches = startswith
+        else
+          quarry.ignore.matches = equals
+        end
+        print("Use ignore file: \""..filepath.."\"")
       else
         print("Could not unserialize table from file content: "..filepath)
         return
@@ -113,8 +145,15 @@ textutils.slowWrite("......", 2)
 print(" go")
 
 
+-- hold cc stuff as locals for performance
+local turtle = turtle
+local term = term
+local colors = colors
+local textutils = textutils
+local sleep = sleep
+
 --  +-------------------+  --
---  |-->   FUNCTIONS   <--|  --
+--  |-->  FUNCTIONS  <--|  --
 --  +-------------------+  --
 
 local function status(text, color, slowrate)
@@ -210,7 +249,7 @@ local function checkFuel( posx, posy, depth, factor)
     status("Need fuel, trying to fill up...", colors.lightBlue)
     sleep(0.5)
     local success = false
-    for i=(quarry.lastcompslot+1),16 do
+    for i=1,16 do
       if turtle.getItemCount(i)>0 then
         turtle.select(i)
         -- lua will evaluate until one of the statements is true. meaning that it would not
@@ -233,7 +272,7 @@ local function checkFuel( posx, posy, depth, factor)
 end
 
 local function isInventoryEmpty()
-  for i=(quarry.lastcompslot+1),16 do
+  for i=1,16 do
     if turtle.getItemCount(i) > 0 then
       return false
     end
@@ -242,15 +281,23 @@ local function isInventoryEmpty()
 end
 
 local function dropItemsInChest()
-  local chest = peripheral.wrap("front")
-  if chest then
-    local success, name = pcall(chest.getInventoryName)
+  local ok, data = turtle.inspect()
+  if ok then
+    local success = false
+    for _,chestname in ipairs(chests) do
+      if chestname == data.name then
+        success = true
+        break
+      end
+    end
     if success then
-      status("Dropping into \""..name.."\"", colors.lightBlue)
+      status("Dropping into \""..data.name.."\"", colors.lightBlue)
       repeat
-        for i=(quarry.lastcompslot+1),16 do
-          turtle.select(i)
-          turtle.drop()
+        for i=1,16 do
+          if turtle.getItemCount(i) > 0 then
+            turtle.select(i)
+            turtle.drop()
+          end
         end
         sleep(3)
       until isInventoryEmpty()
@@ -258,7 +305,7 @@ local function dropItemsInChest()
     end
   end
   status("No inventory to drop items into...", colors.orange)
-  sleep(1)
+  sleep(2)
 end
 
 --[[
@@ -306,18 +353,17 @@ local function backHome( continueAfterwards )
   -- refuel / drop items
   if (quarry.burnFuel) then
     status("Trying to use fuel items...", colors.lightBlue)
-    for i=(quarry.lastcompslot+1),16 do
-      turtle.select(i)
-      turtle.refuel()
+    for i=1,16 do
+      if turtle.getItemCount(i) > 0 then
+        turtle.select(i)
+        turtle.refuel()
+      end
     end
   end
   
   local isEmpty = isInventoryEmpty()
   if (not isEmpty) then
     local text = "Inventory full..."
-    if (quarry.lastcompslot > 0) then
-      text = text.." c = "..tostring(quarry.lastcompslot)
-    end
     status(text,colors.lightBlue)
     sleep(1)
     dropItemsInChest() -- empty inventory guaranteed after return
@@ -378,17 +424,19 @@ end
 ]]--
 local function digSides()
   for i=1,4 do
-    local ignore = not turtle.detect()
-    if (not ignore) and (quarry.lastcompslot>0) then
-      for c=1,quarry.lastcompslot do
-        turtle.select(c)
-        if turtle.compare() then
-          ignore = true
-          break
+    local digIt = turtle.detect()
+    if digIt and (#quarry.ignore>0) then
+      local success, data = turtle.inspect()
+      if success then
+        for _,ignoreName in ipairs(quarry.ignore) do
+          if quarry.ignore.matches(data.name, ignoreName) then
+            digIt = false
+            break
+          end
         end
       end
     end
-    if not ignore then
+    if digIt then
       turtle.select(1)
       turtle.dig()
       if turtle.getItemCount(16) > 0 then
@@ -404,15 +452,6 @@ end
 ]]--
 local function drill()
   if turtle.detectDown() then
-    if quarry.lastcompslot>0 then
-      for slot=1,quarry.lastcompslot do
-        turtle.select(slot)
-        if turtle.compareDown() then
-          quarry.ignoreBlocks[quarry.depth] = true
-          break
-        end
-      end
-    end
     turtle.select(1)
     turtle.digDown()
     if turtle.getItemCount(16) > 0 then
@@ -452,26 +491,9 @@ local function digColumn()
     drill()
   end
 
-  local rubbishSlot = 1
-  turtle.select(rubbishSlot)
-  
   while quarry.depth > 0 do
     up()
     quarry.depth = quarry.depth - 1
-    if quarry.doFill and (rubbishSlot >= 0) and quarry.ignoreBlocks[quarry.depth] then
-      while turtle.getItemCount(rubbishSlot) <= 1 do
-        rubbishSlot = rubbishSlot + 1
-        turtle.select(rubbishSlot)
-        if rubbishSlot > quarry.lastcompslot then
-          rubbishSlot = -1
-          break
-        end
-      end
-      if rubbishSlot ~= -1 then
-        turtle.placeDown()
-      end
-    end
-    quarry.ignoreBlocks[quarry.depth] = false
   end
   
   status("Hole at x:"..tostring(quarry.posx).." y:"..tostring(quarry.posy).." is done.", colors.lightBlue)
@@ -490,7 +512,7 @@ local function stepsForward(count)
 end
 
 
-function calculateSkipOffset()
+local function calculateSkipOffset()
   local running = true
   
   local facing = direction.front
@@ -647,7 +669,7 @@ local function main()
 end
 
 --  +-----------------------+  --
---  |-->   program start   <--|  --
+--  |-->  program start  <--| --
 --  +-----------------------+  --
 
 main()
