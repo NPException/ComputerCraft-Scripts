@@ -101,16 +101,17 @@ for _,api in ipairs(apis) do
   end
 end
 
-local oldStartup = getFileContent("startup")
-if oldStartup then
-  status("Modifying startup file...", colors.lightBlue, rate)
-else
-  status("Creating startup file...", colors.lightBlue, rate)
-end
-sleep(wait)
 
 -- merge the new startup lines in at the front of old startup file (or create a new one)
 if startupLines then
+  local oldStartup = getFileContent("startup")
+  if oldStartup then
+    status("Modifying startup file...", colors.lightBlue, rate)
+  else
+    status("Creating startup file...", colors.lightBlue, rate)
+  end
+  sleep(wait)
+  
   local file = fs.open("startup", "w")
   for i=1,#startupLines do
     file.writeLine(startupLines[i])
