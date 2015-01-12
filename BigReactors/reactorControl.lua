@@ -1,4 +1,4 @@
-local version = 0.671
+local version = 0.69
 --  +------------------------+  --
 --  |-->  INITIALIZATION  <--|  --
 --  +------------------------+  --
@@ -6,29 +6,14 @@ local version = 0.671
 local ARGS = {...}
  
 -- UPDATE HANDLING --
-if updater then
-  local doupdate = true
-  for k,v in pairs(ARGS) do
-    if v == "noupdate" then
-      doupdate = false
-      break
-    end
-  end
- 
-  if doupdate then
-    ARGS[#ARGS+1]="noupdate"
-    if updater.safeAutoUpdate(version, "URiX6dc3", ARGS) then
-      return
-    end
-  end
-end
+if _UD and _UD.su(version, "URiX6dc3", {...}) then return end
 
 local startswith = function(text, piece)
   return string.sub(text, 1, string.len(piece)) == piece
 end
 
 
-local smooth = false
+local smooth = true
 
 local minEnergy = 100000
 local maxEnergy = 1000000
@@ -113,9 +98,9 @@ end
 local paramMsgs = {}
  
 for _,par in pairs(ARGS) do
-  if par == "smooth" then
-    smooth = true
-    table.insert(paramMsgs, "Enabled smooth adjustment")
+  if par == "static" then
+    smooth = false
+    table.insert(paramMsgs, "Disabled smooth adjustment")
   elseif startswith(par, "min:") then
     minEnergy = tonumber(string.sub(par, string.len("min:")+1))
     table.insert(paramMsgs, "Set minimum energy: "..minEnergy)

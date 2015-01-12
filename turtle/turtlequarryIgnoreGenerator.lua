@@ -1,3 +1,6 @@
+version=0.1
+if _UD and _UD.su(version, "fw5C7u8t", {...}) then return end
+
 local IGNOREFILE = "igno"
 
 local ignore = {

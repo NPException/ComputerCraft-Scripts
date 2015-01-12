@@ -1,4 +1,4 @@
-local version = 1.1
+local version = 1.2
 --  +------------------------+  --
 --  |-->  INITIALIZATION  <--|  --
 --  +------------------------+  --
@@ -8,25 +8,10 @@ if not turtle then
   return
 end
 
-local ARGS = {...}
-
 -- UPDATE HANDLING --
-if updater then
-  local doupdate = true
-  for k,v in pairs(ARGS) do
-    if v == "noupdate" then
-      doupdate = false
-      break
-    end
-  end
+if _UD and _UD.su(version, "HqXCPzCg", {...}) then return end
 
-  if doupdate then
-    ARGS[#ARGS+1]="noupdate"
-    if updater.safeAutoUpdate(version, "HqXCPzCg", ARGS) then
-      return
-    end
-  end
-end
+local ARGS = {...}
 
 -- INITIALIZING NECESSARY FUNCTIONS
 local startswith = function(text, piece)
