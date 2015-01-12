@@ -262,7 +262,7 @@ _UD.u  = _UD.autoUpdate
 _UD.su = _UD.safeAutoUpdate
 
 -- check for updates
-if updater.safeAutoUpdate( "https://raw.githubusercontent.com/NPException42/ComputerCraft-Scripts/master/general/updater.lua", _args) then
+if updater.safeAutoUpdate( "HF7vwabd", _args) then
   return
 end
 
