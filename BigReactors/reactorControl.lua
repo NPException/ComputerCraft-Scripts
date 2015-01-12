@@ -1,4 +1,4 @@
-local version = 0.69
+local version = 0.7
 --  +------------------------+  --
 --  |-->  INITIALIZATION  <--|  --
 --  +------------------------+  --
@@ -153,14 +153,16 @@ while true do
     if smooth then
       reactor.setAllControlRodLevels(level)
       
+      local temperature = reactor.getFuelTemperature()
+      
       local color
-      if level < 25 then
+      if temperature >= 2000 then
         color = colors.red
-      elseif level < 50 then
+      elseif temperature >=1000 then
         color = colors.orange
-      elseif level < 75 then
+      elseif temperature >=500 then
         color = colors.yellow
-      elseif level < 95 then
+      elseif temperature >=200 then
         color = colors.green
       else
         color = colors.lightBlue
