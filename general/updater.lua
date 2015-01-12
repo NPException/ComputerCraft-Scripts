@@ -1,4 +1,4 @@
-local version=2.6
+local version=2.7
 -- version must be first line and must be a number
 -- the name of this variable does not matter, the updater just checks
 -- for the equals sign in the first line.
@@ -262,7 +262,7 @@ _UD.u  = _UD.autoUpdate
 _UD.su = _UD.safeAutoUpdate
 
 -- check for updates
-if updater.safeAutoUpdate( "HF7vwabd", _args) then
+if updater.safeAutoUpdate( "https://raw.githubusercontent.com/NPException42/ComputerCraft-Scripts/master/general/updater.lua", _args) then
   return
 end
 
