@@ -1,7 +1,13 @@
-local version=2.7
+local version=2.9
 -- version must be first line and must be a number
 -- the name of this variable does not matter, the updater just checks
 -- for the equals sign in the first line.
+
+-- wait threshold before calling pastebin.
+-- you can set this to 0 if you want,
+-- but if more than 600 requests are sent to pastebin
+-- within 10 minutes, your MC server IP will be banned on pastebin.
+local pastebinwait = 10
 
 --[[
   If you want to be able to use the
@@ -124,6 +130,31 @@ local function update( usedVersion, pastebinkeyOrURL, cArgs, silent )
     url = pastebinkeyOrURL
   else
     url = "http://pastebin.com/raw.php?i="..textutils.urlEncode( pastebinkeyOrURL )
+    if pastebinwait and pastebinwait > 0 then
+      local wait = pastebinwait
+      while wait > 0 do
+        if not silent then
+          if useColoredOutput and term.isColor() then
+            term.setTextColor(colors.orange)
+          end
+          local x,y = term.getCursorPos()
+          term.setCursorPos(1,y)
+          term.clearLine()
+          term.write("Pastebin spam protect: ")
+          if useColoredOutput and term.isColor() then
+            term.setTextColor(colors.white)
+          end
+          term.write(tostring(wait))
+        end
+        sleep(1)
+        wait = wait - 1
+      end
+      if not silent then
+        local x,y = term.getCursorPos()
+        term.setCursorPos(1,y)
+        term.clearLine()
+      end
+    end
   end
   
   local response = http.get(url)
